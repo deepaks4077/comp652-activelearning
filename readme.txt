@@ -18,4 +18,15 @@ data_handler.py - Do all data related stuff here. Create a class and follow a si
 
 cnn_handler.py - Put a pytorch network in a class here, define all the optimization routines and loss functions in this class.
 
-active_learner.py - Add acquisition learning functions to the active_learner class. Will move some of the code into another script called 'experiments.py' which will import the active_learner class. Important stuff to be done here is to replace the tensorflow bits (a few lines) with the equivalent in pytorch.
+acquisition_functions.py - Add acquisition learning functions to the active_learner class. Will move some of the code into another script called 'experiments.py' which will import the active_learner class. Important stuff to be done here is to replace the tensorflow bits (a few lines) with the equivalent in pytorch.
+
+pytorch_active_learner.py - Handles active learning stuff.
+
+-----------------------------------------------------------------------------
+
+To run the code properly, you must have torchvision. Also edit a file in the following:
+
+$PATH_TO_YOUR_ANACONDA3/anaconda3/lib/python3.7/site-packages/torchvision-0.2.1-py3.7.egg/torchvision/datasets/mnist.py
+
+Change Line 82 to:
+return img, target, index
