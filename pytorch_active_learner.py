@@ -164,19 +164,19 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 #params for regular learner
-num_epochs = 10
-batch_size = 8
-learning_rate = 0.001
-num_train_samples = 1000
-#Number of batch iterations during training between which test set is evaluated with the current model
-test_every_n_iters = 25
+# num_epochs = 5
+# batch_size = 10
+# learning_rate = 0.001
+# num_train_samples = 10000
+# #Number of batch iterations during training between which test set is evaluated with the current model
+# test_every_n_iters = 1000
 
-dataset_manager = mnist(batch_size)
-cnn_model = convnet_mnist(dataset_manager.num_classes).to(device)
+# dataset_manager = mnist(batch_size)
+# cnn_model = convnet_mnist(dataset_manager.num_classes).to(device)
 
-rl = regular_learner(device, cnn_model, dataset_manager, num_epochs, batch_size, learning_rate, num_train_samples, test_every_n_iters)
+# rl = regular_learner(device, cnn_model, dataset_manager, num_epochs, batch_size, learning_rate, num_train_samples, test_every_n_iters)
 
-rl.train()
+# rl.train()
 
 
 
@@ -185,19 +185,21 @@ rl.train()
 
 #params for active learner
 num_epochs = 5
-batch_size = 8
+batch_size = 10
 learning_rate = 0.001
-num_train_samples_per_step = 100
-max_num_train_samples = 1000
+num_train_samples_per_step = 500
+max_num_train_samples = 2500
 #the number of samples you look at to rank amongst (if you have 10k samples you rank 1k random samples and pick the best N samples out of that)
 #It should be greater than or equal to num_train_samples_per_step
-num_samples_to_rank = 500
-test_every_n_iters = 50
+num_samples_to_rank = 1000
+test_every_n_iters = 500
 
 dataset_manager = mnist(batch_size)
 cnn_model = convnet_mnist(dataset_manager.num_classes).to(device)
 
-acquisition_func = acquisition_functions.max_min_softmax()
+#acquisition_func = acquisition_functions.max_min_softmax()
+#acquisition_func = acquisition_functions.smallest_margin_softmax()
+acquisition_func = acquisition_functions.entropy_softmax()
 
 al = active_learner(device, cnn_model, dataset_manager, acquisition_func, num_epochs, batch_size, learning_rate, num_train_samples_per_step, max_num_train_samples, num_samples_to_rank, test_every_n_iters)
 
