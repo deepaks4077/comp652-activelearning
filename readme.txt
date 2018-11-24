@@ -30,3 +30,13 @@ $PATH_TO_YOUR_ANACONDA3/anaconda3/lib/python3.7/site-packages/torchvision-0.2.1-
 
 Change Line 82 to:
 return img, target, index
+
+
+cifar.py
+-----------------
+
+to change the output label to be generated change this line:
+ 83                         if entry['labels'][i] == 1 :
+change 1 to any other number (label), I have kept the debug statements on for now so that when someone else runs it, they will have a better understanding 
+
+Replace Python/2.7/lib/python/site-packages/torchvision/datasets/cifar.py or relevant directory with this file
