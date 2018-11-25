@@ -1,4 +1,4 @@
-Active Learning using Augmented Data from GANs/VAEs (Comp 652 Project)
+#Active Learning using Augmented Data from GANs/VAEs (Comp 652 Project)#
 
 Amit Sinha - 260819070
 Anirudha Jitani - 260845002
@@ -12,7 +12,12 @@ We investigate the effect of using different acquisition functions to figure out
 Following this, we wish to observe the effect of using artificial data generated from pre-trained GANs/VAEs to augment the existing (real) training data set. Since a large amount of data can be generated using this method, we use the same Active Learning mechanism with the same acquisition functions to figure out the most relevant training examples for our task. Then we compare over the same test data (from the actual data set) and investigate the performance of the regular method versus the methods using artificially augmented data (among different acquisition functions). Primarily the goal here is to see if better performance can be achieved using artificially generated data.
 
 
-Code Info
+
+-----------------------------------------------------------------------------
+
+
+
+##Active Learning Code Info##
 
 data_handler.py - Do all data related stuff here. Create a class and follow a similar structure for easy integration.
 
@@ -22,14 +27,31 @@ acquisition_functions.py - Add acquisition learning functions to the active_lear
 
 pytorch_active_learner.py - Handles active learning stuff.
 
------------------------------------------------------------------------------
+-----------------------------------
 
-To run the code properly, you must have torchvision. Also edit a file in the following:
+To run the code properly, you must have torchvision. Also edit the following files:
 
 $PATH_TO_YOUR_ANACONDA3/anaconda3/lib/python3.7/site-packages/torchvision-0.2.1-py3.7.egg/torchvision/datasets/mnist.py
 
 Change Line 82 to:
 return img, target, index
+
+
+$PATH_TO_YOUR_ANACONDA3/anaconda3/lib/python3.7/site-packages/torchvision-0.2.1-py3.7.egg/torchvision/datasets/cifar.py
+
+Chane line 126 to:
+return img, target, index
+
+
+
+
+
+
+
+##GAN Stuff-------------------------------------------------------------------->##
+
+
+
 
 
 cifar.py
