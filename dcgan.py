@@ -1,7 +1,8 @@
-#from __future__ import print_function
+from __future__ import print_function
 import argparse
 import os
 import random
+import string
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -20,6 +21,7 @@ parser.add_argument('--workers', type=int, help='number of data loading workers'
 parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--imageSize', type=int, default=64, help='the height / width of the input image to network')
 parser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
+parser.add_argument('--ctg', type=int, choices = range(10), default=0, help='class of objects to train on ')
 parser.add_argument('--ngf', type=int, default=64)
 parser.add_argument('--ndf', type=int, default=64)
 parser.add_argument('--niter', type=int, default=25, help='number of epochs to train for')
@@ -47,6 +49,8 @@ random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
 
 cudnn.benchmark = True
+
+ctg = opt.ctg
 
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
@@ -79,11 +83,21 @@ elif opt.dataset == 'fake':
     dataset = dset.FakeData(image_size=(3, opt.imageSize, opt.imageSize),
                             transform=transforms.ToTensor())
 assert dataset
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
-                                         shuffle=True, num_workers=int(opt.workers))
 
-print ("DATA LOADER")
-print (dataloader)
+def get_class_labels_indices(train_labels, category):
+	res = []
+	for idx, label in enumerate(train_labels):
+		if label == category:
+			res.append(idx)
+	return res
+
+indices = get_class_labels_indices(dataset.train_labels, ctg)
+
+class_sampler = torch.utils.data.sampler.SubsetRandomSampler(indices)
+
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
+                                         sampler = class_sampler, num_workers=int(opt.workers))
+
 device = torch.device("cuda:0" if opt.cuda else "cpu")
 ngpu = int(opt.ngpu)
 nz = int(opt.nz)
@@ -100,6 +114,8 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
+
+
 
 
 class Generator(nn.Module):
@@ -189,7 +205,7 @@ criterion = nn.BCELoss()
 fixed_noise = torch.randn(opt.batchSize, nz, 1, 1, device=device)
 real_label = 1
 fake_label = 0
-i_c = 0
+
 # setup optimizer
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 optimizerG = optim.Adam(netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -236,20 +252,14 @@ for epoch in range(opt.niter):
               % (epoch, opt.niter, i, len(dataloader),
                  errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
         if i % 100 == 0:
-		print "REAL CPU"
-		print type(real_cpu)
-		print real_cpu
-        	vutils.save_image(real_cpu,
-                   '%s/real_samples_%d.png' % (opt.outf, i_c))
-                   #normalize=True)
-        	fake = netG(fixed_noise)
-		print "FAKE DATA"
-		print type(fake.detach())
-		print fake.detach()
-        	vutils.save_image(fake.detach(),
-                    '%s/fake_samples_epoch_%03d_%d.png' % (opt.outf, epoch, i_c))
-                    #normalize=True)
-		i_c += 1
+            vutils.save_image(real_cpu,
+                    '%s/real_samples.png' % opt.outf,
+                    normalize=True)
+            fake = netG(fixed_noise)
+            vutils.save_image(fake.detach(),
+                    '%s/fake_samples_ctg_%02d_epoch_%03d.png' % (opt.outf, ctg, epoch),
+                    normalize=True)
+
     # do checkpointing
     torch.save(netG.state_dict(), '%s/netG_epoch_%d.pth' % (opt.outf, epoch))
     torch.save(netD.state_dict(), '%s/netD_epoch_%d.pth' % (opt.outf, epoch))
