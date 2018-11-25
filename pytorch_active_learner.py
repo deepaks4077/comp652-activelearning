@@ -187,7 +187,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 num_epochs = 5
 batch_size = 10
 learning_rate = 0.001
-num_train_samples_per_step = 500
+num_train_samples_per_step = 50
 max_num_train_samples = 2500
 #the number of samples you look at to rank amongst (if you have 10k samples you rank 1k random samples and pick the best N samples out of that)
 #It should be greater than or equal to num_train_samples_per_step
@@ -197,9 +197,11 @@ test_every_n_iters = 500
 dataset_manager = mnist(batch_size)
 cnn_model = convnet_mnist(dataset_manager.num_classes).to(device)
 
-#acquisition_func = acquisition_functions.max_min_softmax()
+acquisition_func = acquisition_functions.max_min_softmax()
 #acquisition_func = acquisition_functions.smallest_margin_softmax()
-acquisition_func = acquisition_functions.entropy_softmax()
+#acquisition_func = acquisition_functions.entropy_softmax()
+#acquisition_func = acquisition_functions.uncertainty_density_max_softmax()
+#acquisition_func = acquisition_functions.uncertainty_density_entropy_softmax()
 
 al = active_learner(device, cnn_model, dataset_manager, acquisition_func, num_epochs, batch_size, learning_rate, num_train_samples_per_step, max_num_train_samples, num_samples_to_rank, test_every_n_iters)
 
