@@ -6,6 +6,7 @@ import torch
 import torchvision
 import torchvision.transforms as transforms
 
+import random
 
 #pytorch stuff
 class mnist():
@@ -26,8 +27,12 @@ class mnist():
 		train_dataset_subset = torch.utils.data.Subset(self.train_dataset, indices)
 		train_dataset_subset_loader = torch.utils.data.DataLoader(dataset=train_dataset_subset, batch_size=self.batch_size, shuffle=True)
 
-
 		return train_dataset_subset_loader
+
+	def get_random_subset_train_dataset_loader(self, num_datapoints):
+		random_indices = random.sample(range(0, len(self.train_dataset)), num_datapoints)
+		random_subset_train_dataset_loader = self.get_train_dataset_subset_loader(random_indices)
+		return random_subset_train_dataset_loader
 
 
 class cifar10():
@@ -48,5 +53,9 @@ class cifar10():
 		train_dataset_subset = torch.utils.data.Subset(self.train_dataset, indices)
 		train_dataset_subset_loader = torch.utils.data.DataLoader(dataset=train_dataset_subset, batch_size=self.batch_size, shuffle=True)
 
-
 		return train_dataset_subset_loader
+
+	def get_random_subset_train_dataset_loader(self, num_datapoints):
+		random_indices = random.sample(range(0, len(self.train_dataset)), num_datapoints)
+		random_subset_train_dataset_loader = self.get_train_dataset_subset_loader(random_indices)
+		return random_subset_train_dataset_loader
