@@ -55,6 +55,19 @@ class AcquisitionFunction():
     def get_best_sample(self, inp, out):
         raise NotImplementedError
 
+class Random(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        print(input_ids.shape)
+        sample_size = len(input_ids)        
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            res = input_ids[:self.selection_size]
+
+        print(res.shape)
+        return res
+
 class Max_Min_Softmax(AcquisitionFunction):
     def get_best_sample(self, input_ids, outputs):
         sample_size = len(input_ids)
@@ -70,19 +83,73 @@ class Max_Min_Softmax(AcquisitionFunction):
             
         return res
 
-class Random(AcquisitionFunction):
+class Smallest_Margin(AcquisitionFunction):
     def get_best_sample(self, input_ids, outputs):
-        print(input_ids.shape)
-        sample_size = len(input_ids)        
+        sample_size = len(input_ids)
+            
         res = []
         if (sample_size <= self.selection_size):
             res = input_ids
         else:
-            res = input_ids[:self.selection_size]
-
-        print(res.shape)
+            sm_outputs = self.softmax_fn(outputs)
+            sm_outputs_top_k = torch.topk(sm_outputs, 2)[0]
+            output_confidence = sm_outputs_top_k[0] - sm_outputs_top_k[1]
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[:self.selection_size]]
+            
         return res
-        
+
+class Entropy(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+            
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            sm_outputs = self.softmax_fn(outputs)
+            output_confidence = torch.sum(sm_outputs * torch.log(sm_outputs), dim=1)
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[:self.selection_size]]
+            
+        return res
+
+class Density_Max(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+            
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            normalized_outputs_matrix = nn.functional.normalize(outputs.reshape(outputs.shape[0], outputs.shape[1] * outputs.shape[2] * outputs.shape[3]), p=2, dim=1)
+            sm_outputs = self.softmax_fn(outputs)
+            output_uncertainty = 1 - torch.max(sm_outputs, dim=1)[0]
+            output_confidence = torch.mean(torch.mm(normalized_outputs_matrix, normalized_outputs_matrix.transpose(dim0=0, dim1=1)), dim=0) * output_uncertainty
+
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+            
+        return res
+
+class Density_Entropy(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+            
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            normalized_outputs_matrix = nn.functional.normalize(outputs.reshape(outputs.shape[0], outputs.shape[1] * outputs.shape[2] * outputs.shape[3]), p=2, dim=1)
+            sm_outputs = self.softmax_fn(outputs)
+            output_uncertainty = -torch.sum(sm_outputs * torch.log(sm_outputs), dim=1)
+            output_confidence = torch.mean(torch.mm(normalized_outputs_matrix, normalized_outputs_matrix.transpose(dim0=0, dim1=1)), dim=0) * output_uncertainty
+
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+            
+        return res
+
 class Selector():
     def __init__(self, func: AcquisitionFunction):
         self.func = func
