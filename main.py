@@ -19,7 +19,7 @@ import torchvision.datasets as datasets
 import numpy as np
 
 # Create an experiment
-
+NUM_TRIALS = 10
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Report any information you need by:
@@ -150,6 +150,53 @@ class Density_Entropy(AcquisitionFunction):
             
         return res
 
+
+#STOCHASTIC NETWORK BASED STUFF
+class SN_Entropy(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            mean_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+
+            output_confidence = -torch.sum(mean_outputs * torch.log(mean_outputs), dim=1)
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+
+        return res
+
+class SN_BALD(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            #find entropy of means
+            mean_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+            output_confidence = -torch.sum(mean_outputs * torch.log(mean_outputs), dim=1)
+
+            #find mean of entropies
+            outputs = -torch.sum(outputs * torch.log(outputs), dim=1)
+            mean_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0).reshape(1)), dim=0)
+            output_confidence = output_confidence - mean_outputs
+
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+
+        return res
+
+
 class Selector():
     def __init__(self, func: AcquisitionFunction):
         self.func = func
@@ -165,13 +212,18 @@ class convnet_mnist(nn.Module):
             nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=2),
             nn.BatchNorm2d(16),
             nn.ReLU(),
+            nn.Dropout2d(0.2),
             nn.MaxPool2d(kernel_size=2, stride=2))
         self.layer2 = nn.Sequential(
             nn.Conv2d(16, 32, kernel_size=5, stride=1, padding=2),
             nn.BatchNorm2d(32),
             nn.ReLU(),
+            nn.Dropout2d(0.2),
             nn.MaxPool2d(kernel_size=2, stride=2))
-        self.fc = nn.Linear(7*7*32, self.num_classes)
+        self.fc = nn.Sequential(
+            nn.Linear(7*7*32, self.num_classes),
+            nn.Dropout(0.2),
+            nn.Softmax())
         
     def forward(self, x):
         out = self.layer1(x)
@@ -182,23 +234,52 @@ class convnet_mnist(nn.Module):
 
 
 def test_model(model, test_loader):
-    model.eval()		
+    #THIS IS ACTUALLY DOING TEST FOR MC DROPOUT
+    model.train()
+    #this should be size of dataset (10k), not batch size (1000)
     total_test_samples = test_loader.batch_size
     with torch.no_grad():
         correct = 0
         total = 0
         
         for idx, (images, labels, tl_ind) in enumerate(test_loader):
+            for i in range(NUM_TRIALS):
+                images = torch.cat((images,images), dim=0)
+
             images = images.to(device)
             labels = labels.to(device)
             outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
+
+            predicted = torch.LongTensor([]).to(device)
+            for i in range(test_loader.batch_size):
+                predicted = torch.cat( (predicted, torch.argmax(torch.mean(outputs[i::NUM_TRIALS], dim=0)).reshape(1)), dim=0 )
+
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
         test_accuracy = 100 * correct / total
         print('Test Accuracy on the {} test images: {} %'.format(total_test_samples, test_accuracy))
     return test_accuracy
+
+
+# def test_model(model, test_loader):
+#     model.eval()		
+#     total_test_samples = test_loader.batch_size
+#     with torch.no_grad():
+#         correct = 0
+#         total = 0
+        
+#         for idx, (images, labels, tl_ind) in enumerate(test_loader):
+#             images = images.to(device)
+#             labels = labels.to(device)
+#             outputs = model(images)
+#             _, predicted = torch.max(outputs.data, 1)
+#             total += labels.size(0)
+#             correct += (predicted == labels).sum().item()
+
+#         test_accuracy = 100 * correct / total
+#         print('Test Accuracy on the {} test images: {} %'.format(total_test_samples, test_accuracy))
+#     return test_accuracy
 
 train_dataset = ModifiedDataset(datasets.MNIST(root='./data/', train=True, transform=transforms.ToTensor(), download=True))
 test_dataset = ModifiedDataset(datasets.MNIST(root='./data/', train=False, transform=transforms.ToTensor()))
@@ -225,6 +306,8 @@ def run_experiment(train_dataset, test_dataset, model, myselector, optimizer, cr
             samples = sampling_set[indices]
 
         images, labels, _ = train_dataset.get_items(samples)
+        for i in range(NUM_TRIALS):
+            images = torch.cat((images,images), dim=0)
         images = images.to(device)
         labels = labels.to(device)
 
