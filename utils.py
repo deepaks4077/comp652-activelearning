@@ -14,7 +14,7 @@ def test_model(model, test_loader):
         correct = 0
         total = 0
         
-        for idx, (images, labels, tl_ind) in enumerate(test_loader):
+        for idx, (images, labels, tl_ind, _) in enumerate(test_loader):
             images = images.to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -45,19 +45,27 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
             indices = torch.randperm(len(sampling_set))[:sampling_size].tolist()
             samples = sampling_set[indices]
 
-        images, labels, _ = train_dataset.get_items(samples)
+        images, labels, _ , _= train_dataset.get_items(samples)
         images = images.to(device)
         labels = labels.to(device)
 
         with torch.no_grad():
-            outputs = model(images)
+            outputs = model.forward(images)
             training_indices = myselector.select(samples, outputs, images)
 
+        # Contacatenate current and previous selections
+        inps1, labelz1, _, isfake = train_dataset.get_items(training_indices)
+        inps2, labelz2, _, _ = train_dataset.get_items(selected)
+        inps = torch.cat((inps1, inps2), dim = 0)
+        labelz = torch.cat((labelz1, labelz2), dim = 0)
         selected = torch.cat((selected, training_indices), dim = 0)
+        
+        num_fakes = len(np.where(isfake == 0)[0])
+
+        # Set model totrain
         model.train()
         
         # Forward pass
-        inps, labelz, _ = train_dataset.get_items(selected)
         inps = inps.to(device)
         labelz = labelz.to(device)
         
@@ -73,6 +81,9 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
         accuracy = test_model(model, test_loader)
 
         experiment.log_metric("acc_{}".format(exp_suffix), accuracy, i)
+        experiment.log_metric("isfake_proportion_{}".format(exp_suffix), num_fakes / training_indices.shape[0], i)
+
+        print("isfake_proportion_ = {}".format(num_fakes))
 
         sampling_set = torch.tensor(list((set(sampling_set.tolist()) - set(training_indices.tolist()))), dtype = torch.int)
 

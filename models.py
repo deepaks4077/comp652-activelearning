@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class convnet_mnist(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes = 10):
         super(convnet_mnist, self).__init__()
         self.num_classes = num_classes
         self.layer1 = nn.Sequential(
@@ -15,7 +15,13 @@ class convnet_mnist(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2))
-        self.fc = nn.Linear(7*7*32, self.num_classes)
+
+        test_inp = torch.randn((1,1,64,64))
+
+        out = self.layer1(test_inp)
+        out = self.layer2(out)
+
+        self.fc = nn.Linear(out.numel(), self.num_classes)
         
     def forward(self, x):
         out = self.layer1(x)
