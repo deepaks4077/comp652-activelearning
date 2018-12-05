@@ -118,3 +118,87 @@ class Density_Entropy(AcquisitionFunction):
             res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
             
         return res
+
+
+#STOCHASTIC NETWORK BASED STUFF
+class SN_Entropy(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            mean_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+
+            output_confidence = -torch.sum(mean_outputs * torch.log(mean_outputs), dim=1)
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+
+        return res
+
+class SN_BALD(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            #find entropy of means
+            mean_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+            output_confidence = -torch.sum(mean_outputs * torch.log(mean_outputs), dim=1)
+
+            #find mean of entropies
+            outputs = -torch.sum(outputs * torch.log(outputs), dim=1)
+            mean_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0).reshape(1)), dim=0)
+            output_confidence = output_confidence - mean_outputs
+
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+
+        return res
+
+
+class Variation_Ratios(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            mean_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+
+            output_confidence = 1 - torch.max(mean_outputs, dim=1)[0]
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+
+        return res
+
+
+class Mean_STD(AcquisitionFunction):
+    def get_best_sample(self, input_ids, outputs):
+        sample_size = len(input_ids)
+
+        res = []
+        if (sample_size <= self.selection_size):
+            res = input_ids
+        else:
+            std_outputs = torch.FloatTensor([]).to(device)
+            for i in range(sample_size):
+                std_outputs = torch.cat((std_outputs, (torch.mean(outputs[i::NUM_TRIALS]**2, dim=0) - torch.mean(outputs[i::NUM_TRIALS], dim=0)**2)**0.5), dim=0)
+
+            output_confidence = torch.mean(std_outputs, dim=1)
+            _, sorted_indices = torch.sort(output_confidence)
+            res = input_ids[sorted_indices.tolist()[-self.selection_size:]]
+
+        return res

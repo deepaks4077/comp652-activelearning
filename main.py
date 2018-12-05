@@ -29,6 +29,7 @@ from models import convnet_mnist
 from utils import test_model, run_experiment
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+NUM_TRIALS = 10
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
@@ -88,4 +89,4 @@ for j in range(len(myfunctions)):
     model = convnet_mnist(10).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr= hyper_params["learning_rate"])
     myselector = Selector(myfunctions[j](selection_size = hyper_params["selection_size"]))
-    acc_random = run_experiment(train_dataset, test_dataset, test_loader,  model, hyper_params["sampling_size"], myselector, optimizer, criterion, mynames[j], experiment)
+    acc_random = run_experiment(train_dataset, test_dataset, test_loader,  model, hyper_params["sampling_size"], myselector, optimizer, criterion, mynames[j], experiment, NUM_TRIALS)
