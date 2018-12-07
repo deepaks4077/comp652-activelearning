@@ -18,8 +18,10 @@ def test_model(model, test_loader, NUM_TRIALS):
         total = 0
         
         for idx, (images, labels, tl_ind, _) in enumerate(test_loader):
-            for i in range(NUM_TRIALS):
-                images = torch.cat((images,images), dim=0)
+            images_temp = images
+        
+            for nt in range(NUM_TRIALS-1):
+                images = torch.cat((images,images_temp), dim=0)
 
             images = images.to(device)
             labels = labels.to(device)
@@ -28,7 +30,6 @@ def test_model(model, test_loader, NUM_TRIALS):
             predicted = torch.LongTensor([]).to(device)
             for i in range(test_loader.batch_size):
                 predicted = torch.cat( (predicted, torch.argmax(torch.mean(outputs[i::NUM_TRIALS], dim=0)).reshape(1)), dim=0 )
-
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
 
@@ -45,6 +46,9 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
     selected = torch.tensor([], dtype = torch.int)
     accuracy = []
     i = 1
+    
+    # Set model totrain
+    model.train()
     while len(sampling_set) != 0:
 
         print("\nIteration = {}, sample set size = {}".format(i, len(sampling_set)))
@@ -56,14 +60,19 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
             samples = sampling_set[indices]
 
         images, labels, _ , _= train_dataset.get_items(samples)
-        for nt in range(NUM_TRIALS):
-            images = torch.cat((images,images), dim=0)
+        images_temp = images
+        
+        for nt in range(NUM_TRIALS-1):
+            images = torch.cat((images,images_temp), dim=0)
+
         images = images.to(device)
         labels = labels.to(device)
+        
 
         with torch.no_grad():
             outputs = model.forward(images)
-            training_indices = myselector.select(samples, outputs, images)
+            training_indices = myselector.select(samples, outputs, None, NUM_TRIALS)
+        del images, outputs
 
         # Contacatenate current and previous selections
         inps1, labelz1, _, isfake = train_dataset.get_items(training_indices)
@@ -74,8 +83,7 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
         
         num_fakes = len(np.where(isfake == 0)[0])
 
-        # Set model totrain
-        model.train()
+
         
         # Forward pass
         inps = inps.to(device)
@@ -100,5 +108,7 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
         sampling_set = torch.tensor(list((set(sampling_set.tolist()) - set(training_indices.tolist()))), dtype = torch.int)
 
         i += 1
+
+        torch.cuda.empty_cache()
 
     return accuracy

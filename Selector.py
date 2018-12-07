@@ -8,5 +8,5 @@ class Selector():
     def __init__(self, func: AcquisitionFunction):
         self.func = func
 
-    def select(self, input_ids, outputs, inputs):
-        return self.func.get_best_sample(input_ids, outputs, inputs)
+    def select(self, input_ids, outputs, inputs, NUM_TRIALS):
+        return self.func.get_best_sample(input_ids, outputs, inputs, NUM_TRIALS)

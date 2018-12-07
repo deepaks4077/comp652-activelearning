@@ -2,6 +2,7 @@ from typing import Tuple, List, Union, Dict
 import torch
 import torch.nn as nn
 import numpy as np
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class AcquisitionFunction():
     def __init__(self, selection_size: int, name = "random"):
@@ -9,7 +10,7 @@ class AcquisitionFunction():
         self.softmax_fn = nn.Softmax(dim = 1)
         self.name = name
     
-    def get_best_sample(self, inp_ids, out, inp = None):
+    def get_best_sample(self, inp_ids, out, inp = None, NUM_TRIALS=1):
         raise NotImplementedError
 
 class Random(AcquisitionFunction):
@@ -122,16 +123,17 @@ class Density_Entropy(AcquisitionFunction):
 
 #STOCHASTIC NETWORK BASED STUFF
 class SN_Entropy(AcquisitionFunction):
-    def get_best_sample(self, input_ids, outputs):
+    def get_best_sample(self, input_ids, outputs, inputs = None, NUM_TRIALS = 1):
         sample_size = len(input_ids)
-
+        outputs = self.softmax_fn(outputs)
+        
         res = []
         if (sample_size <= self.selection_size):
             res = input_ids
         else:
             mean_outputs = torch.FloatTensor([]).to(device)
             for i in range(sample_size):
-                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0).reshape(1, -1)), dim=0)
 
             output_confidence = -torch.sum(mean_outputs * torch.log(mean_outputs), dim=1)
             _, sorted_indices = torch.sort(output_confidence)
@@ -140,7 +142,7 @@ class SN_Entropy(AcquisitionFunction):
         return res
 
 class SN_BALD(AcquisitionFunction):
-    def get_best_sample(self, input_ids, outputs):
+    def get_best_sample(self, input_ids, outputs, inputs = None, NUM_TRIALS = 1):
         sample_size = len(input_ids)
 
         res = []
@@ -150,7 +152,7 @@ class SN_BALD(AcquisitionFunction):
             #find entropy of means
             mean_outputs = torch.FloatTensor([]).to(device)
             for i in range(sample_size):
-                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0).reshape(1, -1)), dim=0)
             output_confidence = -torch.sum(mean_outputs * torch.log(mean_outputs), dim=1)
 
             #find mean of entropies
@@ -167,7 +169,7 @@ class SN_BALD(AcquisitionFunction):
 
 
 class Variation_Ratios(AcquisitionFunction):
-    def get_best_sample(self, input_ids, outputs):
+    def get_best_sample(self, input_ids, outputs, inputs = None, NUM_TRIALS = 1):
         sample_size = len(input_ids)
 
         res = []
@@ -176,7 +178,7 @@ class Variation_Ratios(AcquisitionFunction):
         else:
             mean_outputs = torch.FloatTensor([]).to(device)
             for i in range(sample_size):
-                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0)), dim=0)
+                mean_outputs = torch.cat((mean_outputs, torch.mean(outputs[i::NUM_TRIALS], dim=0).reshape(1, -1)), dim=0)
 
             output_confidence = 1 - torch.max(mean_outputs, dim=1)[0]
             _, sorted_indices = torch.sort(output_confidence)
@@ -186,7 +188,7 @@ class Variation_Ratios(AcquisitionFunction):
 
 
 class Mean_STD(AcquisitionFunction):
-    def get_best_sample(self, input_ids, outputs):
+    def get_best_sample(self, input_ids, outputs, inputs = None, NUM_TRIALS = 1):
         sample_size = len(input_ids)
 
         res = []
@@ -195,7 +197,7 @@ class Mean_STD(AcquisitionFunction):
         else:
             std_outputs = torch.FloatTensor([]).to(device)
             for i in range(sample_size):
-                std_outputs = torch.cat((std_outputs, (torch.mean(outputs[i::NUM_TRIALS]**2, dim=0) - torch.mean(outputs[i::NUM_TRIALS], dim=0)**2)**0.5), dim=0)
+                std_outputs = torch.cat((std_outputs, (torch.mean(outputs[i::NUM_TRIALS]**2, dim=0) - torch.mean(outputs[i::NUM_TRIALS], dim=0)**2).reshape(1, -1)**0.5), dim=0)
 
             output_confidence = torch.mean(std_outputs, dim=1)
             _, sorted_indices = torch.sort(output_confidence)
