@@ -28,7 +28,11 @@ from models import convnet_mnist
 from utils import test_model, run_experiment
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+#CONFIGURABLE STUFF
 NUM_TRIALS = 20
+max_training_num = 300
+hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/4), "selection_size": 50, "max_training_num": max_training_num}
+
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
@@ -39,38 +43,23 @@ prefix = "./fake_data/"
 input_size = 28
 fake_subset_indices = [x for x in range(3000)]
 real_subset_indices = [x for x in range(30000)]
-max_training_num = 2000
 
 
-mytransforms = [transforms.ToPILImage(), transforms.Resize(input_size), transforms.ToTensor()]
+
+mytransforms = [transforms.Normalize((-1.,-1.,-1.),(2.,2.,2.)), transforms.ToPILImage(), transforms.Resize(input_size), transforms.ToTensor()]
 dtsets = [ModifiedDataset(Subset(TorchDataset(join(prefix, f), transforms = transforms.Compose(mytransforms)), fake_subset_indices), fake = True, input_size = input_size) for f in listdir(prefix) if isfile(join(prefix, f))]
 
-mnist_dataset = ModifiedDataset(Subset(
-                                    datasets.MNIST(root='./data/', 
-                                                   train=True, 
- 				                    transform=transforms.Compose([
-                                                        #transforms.Resize(64),
- 							transforms.ToTensor(),
-                                                        transforms.Normalize(
-                                                            (0.5, 0.5, 0.5), 
-                                                            (0.5, 0.5, 0.5))]), 
-                                                        download=True), 
-                                    real_subset_indices), fake = False, input_size = input_size)
+mnist_dataset = ModifiedDataset(Subset(datasets.MNIST(root='./data/', train=True, transform=transforms.ToTensor(), download=True), real_subset_indices), fake = False, input_size = input_size)
 
 dtsets.append(mnist_dataset)
 train_dataset = ModifiedDataset(ConcatDataset(dtsets))
 
-test_dataset = ModifiedDataset(datasets.MNIST(root='./data/', 
-                                                train=False, 
-                                                transform=transforms.Compose([ \
-							#transforms.Resize(64), \
-							transforms.ToTensor(), \
-							transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])))
+test_dataset = ModifiedDataset(datasets.MNIST(root='./data/', train=False, transform=transforms.ToTensor()))
 
 test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=1000, shuffle=False)
 criterion = nn.CrossEntropyLoss()
 
-hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/20), "selection_size": 500, "max_training_num": max_training_num}
+
 experiment = Experiment(api_key="Gncqbz3Rhfy3MZJBcX7xKVJoo", project_name="general", workspace="deepak-sharma-mail-mcgill-ca")
 experiment.log_parameters(hyper_params)
 
