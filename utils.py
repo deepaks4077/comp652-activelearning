@@ -55,10 +55,10 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
     samples = []
     selected = torch.tensor([], dtype = torch.int)
     accuracy = []
-    i = 1
+    main_iter = 1
     while len(sampling_set) != 0:
 
-        print("\nIteration = {}, sample set size = {}".format(i, len(sampling_set)))
+        print("\nIteration = {}, sample set size = {}".format(main_iter, len(sampling_set)))
 
         if(len(sampling_set) <= sampling_size):
             samples = sampling_set
@@ -120,8 +120,8 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
 
         accuracy = test_model(model, test_loader, NUM_TRIALS)
 
-        experiment.log_metric("acc_{}".format(exp_suffix), accuracy, i)
-        experiment.log_metric("isfake_proportion_{}".format(exp_suffix), num_fakes / training_indices.shape[0], i)
+        experiment.log_metric("acc_{}".format(exp_suffix), accuracy, main_iter)
+        experiment.log_metric("isfake_proportion_{}".format(exp_suffix), num_fakes / training_indices.shape[0], main_iter)
 
         print("isfake_proportion_ = {}".format(num_fakes))
 
@@ -130,6 +130,6 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
 
         sampling_set = torch.tensor(list((set(sampling_set.tolist()) - set(training_indices.tolist()))), dtype = torch.int)
 
-        i += 1
+        main_iter += 1
 
     return accuracy
