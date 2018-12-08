@@ -6,7 +6,7 @@ import numpy as np
 
 class ModifiedDataset(Dataset):
 
-    def __init__(self, dset, fake = False, input_size = 64):
+    def __init__(self, dset, fake = False, input_size = 28):
         self.dset = dset
         self.input_size = input_size
 
@@ -41,14 +41,32 @@ class ModifiedDataset(Dataset):
 
 class TorchDataset(Dataset):
 
-	def __init__(self, name):
+    def __init__(self, name, transforms = None):
+        self.name = name
+        self.dset = torch.load(name)
+        self.transforms = transforms
 
-		self.name = name
-		self.dset = torch.load(name)
+    def __getitem__(self, index: int):
+        data, target = self.dset[0][index], self.dset[1][index]
+       
+        if self.transforms is not None:
+            data = self.transforms(data.cpu().view(1, data.shape[0], data.shape[1]))
+           
+        return data.view(data.shape[1], data.shape[2]), target
+
+    def __len__(self):
+        return len(self.dset[1])
+
+class ModifiedTensorDataset(Dataset):
+
+	def __init__(self, images, labels):
+
+		self.images = images
+		self.labels = labels
 
 	def __getitem__(self, index: int):
-		data, target = self.dset[0][index], self.dset[1][index]
+		data, target = self.images[index], self.labels[index] 
 		return data, target
 
 	def __len__(self):
-		return len(self.dset[1])
+		return self.images.shape[0]
