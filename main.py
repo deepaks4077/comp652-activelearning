@@ -28,11 +28,6 @@ from models import convnet_mnist
 from utils import test_model, run_experiment
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-#CONFIGURABLE STUFF
-NUM_TRIALS = 20
-max_training_num = 300
-hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/4), "selection_size": 50, "max_training_num": max_training_num}
-
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
@@ -60,13 +55,25 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=1000,
 criterion = nn.CrossEntropyLoss()
 
 
+
+#EDIT ME! EDIT ME!
+#Contains most of the parameters needed for an experiment
+#CONFIGURABLE STUFF
+NUM_TRIALS = 20
+max_training_num = 300
+hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/4), "selection_size": 50, "max_training_num": max_training_num}
+
+
+
 experiment = Experiment(api_key="Gncqbz3Rhfy3MZJBcX7xKVJoo", project_name="general", workspace="deepak-sharma-mail-mcgill-ca")
 experiment.log_parameters(hyper_params)
 
 myfunctions = [AcquisitionFunctions.Random, AcquisitionFunctions.Density_Max,AcquisitionFunctions.Density_Entropy, AcquisitionFunctions.Smallest_Margin, AcquisitionFunctions.SN_Entropy, AcquisitionFunctions.SN_BALD, AcquisitionFunctions.Variation_Ratios, AcquisitionFunctions.Mean_STD]
 
 for j in range(len(myfunctions)):
-    print("J = {}".format(j))
+    print()
+    print('-------------------------------------------------------')
+    print("Processing function {}".format(j+1))
     print("Name = {}".format(myfunctions[j].name))
     model = convnet_mnist(10).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr= hyper_params["learning_rate"])
