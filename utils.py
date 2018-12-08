@@ -2,7 +2,7 @@ from typing import Tuple, List, Union, Dict
 from comet_ml import Experiment
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, SubsetRandomSampler
+from torch.utils.data import TensorDataset, Dataset, SubsetRandomSampler
 from ModifiedDataset import ModifiedTensorDataset
 import numpy as np
 
@@ -23,7 +23,16 @@ def test_model(model, test_loader, NUM_TRIALS):
             
             images = images.to(device)
             labels = labels.to(device)
-            outputs = model(images)
+            dummy_lbls = torch.zeros(images.shape[0])
+
+            images_dataset = TensorDataset(images, dummy_lbls)
+            images_loader = torch.utils.data.DataLoader(dataset=images_dataset, batch_size=1000, shuffle=False)
+            
+            outputs = torch.FloatTensor([]).to(device)
+            for i, (imgs, lbls) in enumerate(images_loader):
+                output = model.forward(imgs)
+                outputs = torch.cat((outputs, output), dim=0)
+
             #_, predicted = torch.max(outputs.data, 1)
             batch_size = test_loader.batch_size
             predicted = torch.LongTensor([]).to(device)
@@ -65,13 +74,21 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
             images = torch.cat((images,images_temp), dim=0)
 
         images = images.to(device)
-        labels = labels.to(device)
+        #labels = labels.to(device)
+        dummy_lbls = torch.zeros(images.shape[0])
+
+        images_dataset = TensorDataset(images, dummy_lbls)
+        images_loader = torch.utils.data.DataLoader(dataset=images_dataset, batch_size=1000, shuffle=False)
 
         with torch.no_grad():
-            outputs = model.forward(images)
+            outputs = torch.FloatTensor([]).to(device)
+            for i, (imgs, lbls) in enumerate(images_loader):
+                output = model.forward(imgs)
+                outputs = torch.cat((outputs, output), dim=0)
+
             training_indices = myselector.select(samples, outputs, images_temp.to(device)) 
 
-        del images, outputs
+        del images, outputs, images_temp
 
         # Contacatenate current and previous selections
         inps1, labelz1, _, isfake = train_dataset.get_items(training_indices)
@@ -87,7 +104,7 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
     
 
         selection_dataset = ModifiedTensorDataset(images = inps, labels = labelz)
-        selection_dataloader = torch.utils.data.DataLoader(dataset=selection_dataset, batch_size=250, shuffle=False)
+        selection_dataloader = torch.utils.data.DataLoader(dataset=selection_dataset, batch_size=1000, shuffle=False)
         
         for idx, (data, target) in enumerate(selection_dataloader):
             data = data.to(device)

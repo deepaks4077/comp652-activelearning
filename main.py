@@ -28,7 +28,7 @@ from models import convnet_mnist
 from utils import test_model, run_experiment
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-NUM_TRIALS = 10
+NUM_TRIALS = 20
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
@@ -39,7 +39,7 @@ prefix = "./fake_data/"
 input_size = 28
 fake_subset_indices = [x for x in range(3000)]
 real_subset_indices = [x for x in range(30000)]
-max_training_num = 5000
+max_training_num = 2000
 
 
 mytransforms = [transforms.ToPILImage(), transforms.Resize(input_size), transforms.ToTensor()]
@@ -72,7 +72,7 @@ criterion = nn.CrossEntropyLoss()
 
 hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/20), "selection_size": 500, "max_training_num": max_training_num}
 experiment = Experiment(api_key="Gncqbz3Rhfy3MZJBcX7xKVJoo", project_name="general", workspace="deepak-sharma-mail-mcgill-ca")
-experiment.log_multiple_params(hyper_params)
+experiment.log_parameters(hyper_params)
 
 myfunctions = [AcquisitionFunctions.Random, AcquisitionFunctions.Density_Max,AcquisitionFunctions.Density_Entropy, AcquisitionFunctions.Smallest_Margin, AcquisitionFunctions.SN_Entropy, AcquisitionFunctions.SN_BALD, AcquisitionFunctions.Variation_Ratios, AcquisitionFunctions.Mean_STD]
 
