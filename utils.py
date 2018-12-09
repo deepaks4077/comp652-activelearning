@@ -60,6 +60,25 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
     accuracy = []
     main_iter = 1
 
+    inp, lbl, _, _ = train_dataset.get_items(selected)
+
+    selection_ds = ModifiedTensorDataset(images = inp, labels = lbl)
+    selection_dl = torch.utils.data.DataLoader(dataset=selection_ds, batch_size=1000, shuffle=True)
+
+    for n_ep in range(20):
+        for idx, (data, target) in enumerate(selection_dl):
+            data = data.to(device)
+            target = target.to(device)
+
+            outputs = model(data)
+            loss = criterion(outputs, target.reshape(-1))
+            
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+    del inp, lbl, selection_ds, selection_dl
+
     if reset_model_per_selection:
         torch.save(model, 'bootstrap_model.ckpt')
 

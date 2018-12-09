@@ -29,6 +29,8 @@ from utils import test_model, run_experiment
 import random
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+torch.manual_seed(7)
+random.seed(42)
 
 def weights_init(m):
     if isinstance(m, nn.Conv2d):
@@ -56,8 +58,6 @@ test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=1000,
 criterion = nn.CrossEntropyLoss()
 
 
-
-#EDIT ME! EDIT ME!
 #Contains most of the parameters needed for an experiment
 #CONFIGURABLE STUFF
 NUM_TRIALS = 10
