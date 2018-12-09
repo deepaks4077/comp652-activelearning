@@ -47,15 +47,22 @@ def test_model(model, test_loader, NUM_TRIALS):
         print('Test Accuracy on the {} test images: {} %'.format(total_test_samples, test_accuracy))
     return test_accuracy
 
-def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_size, myselector, optimizer, criterion, exp_suffix, experiment, max_training_num, NUM_TRIALS):
+def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_size, myselector, optimizer, criterion, exp_suffix, experiment, max_training_num, NUM_TRIALS, NUM_EPOCHS, learn_rate, random_bootstrap_samples, reset_model_per_selection):
     
     print("Running model with function: {}".format(exp_suffix))
     print("Sampling size = {}\n".format(sampling_size))
+
     sampling_set = torch.tensor([x for x in range(len(train_dataset))], dtype = torch.int)
+    sampling_set = torch.tensor(list((set(sampling_set.tolist()) - set(random_bootstrap_samples))), dtype = torch.int)
     samples = []
     selected = torch.tensor([], dtype = torch.int)
+    selected = torch.cat((selected, torch.tensor([x for x in random_bootstrap_samples], dtype = torch.int)), dim = 0)
     accuracy = []
     main_iter = 1
+
+    if reset_model_per_selection:
+        torch.save(model, 'bootstrap_model.ckpt')
+
     while len(sampling_set) != 0:
 
         print("\nIteration = {}, sample set size = {}".format(main_iter, len(sampling_set)))
@@ -97,26 +104,27 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
         labelz = torch.cat((labelz1, labelz2), dim = 0)
         selected = torch.cat((selected, training_indices), dim = 0)
         
-        num_fakes = len(np.where(isfake == 0)[0])
-
-        # Set model totrain
-        model.train()
-    
+        num_fakes = len(np.where(isfake == 0)[0])    
 
         selection_dataset = ModifiedTensorDataset(images = inps, labels = labelz)
-        selection_dataloader = torch.utils.data.DataLoader(dataset=selection_dataset, batch_size=1000, shuffle=False)
+        selection_dataloader = torch.utils.data.DataLoader(dataset=selection_dataset, batch_size=1000, shuffle=True)
         
-        for idx, (data, target) in enumerate(selection_dataloader):
-            data = data.to(device)
-            target = target.to(device)
+        if reset_model_per_selection:
+            model = torch.load('bootstrap_model.ckpt')
+            optimizer = torch.optim.Adam(model.parameters(), lr=learn_rate)
 
-            outputs = model(data)
-            loss = criterion(outputs, target.reshape(-1))
-        
-            # Backward and optimize
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        for n_ep in range(NUM_EPOCHS):
+            for idx, (data, target) in enumerate(selection_dataloader):
+                data = data.to(device)
+                target = target.to(device)
+
+                outputs = model(data)
+                loss = criterion(outputs, target.reshape(-1))
+            
+                # Backward and optimize
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
         accuracy = test_model(model, test_loader, NUM_TRIALS)
 

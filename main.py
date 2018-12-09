@@ -26,6 +26,7 @@ from ModifiedDataset import ModifiedDataset, TorchDataset
 from Selector import Selector
 from models import convnet_mnist
 from utils import test_model, run_experiment
+import random
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -36,8 +37,8 @@ def weights_init(m):
 dtsets = []
 prefix = "./fake_data/"
 input_size = 28
-fake_subset_indices = [x for x in range(3000)]
-real_subset_indices = [x for x in range(30000)]
+fake_subset_indices = [x for x in range(0)]
+real_subset_indices = [x for x in range(60000)]
 
 
 
@@ -59,9 +60,9 @@ criterion = nn.CrossEntropyLoss()
 #EDIT ME! EDIT ME!
 #Contains most of the parameters needed for an experiment
 #CONFIGURABLE STUFF
-NUM_TRIALS = 20
-max_training_num = 300
-hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/4), "selection_size": 50, "max_training_num": max_training_num}
+NUM_TRIALS = 10
+max_training_num = 220
+hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/10), "selection_size": 10, "max_training_num": max_training_num, "NUM_EPOCHS": 10, "bootstrap_samplesize": 20, "reset_model_per_selection": True}
 
 
 
@@ -69,6 +70,8 @@ experiment = Experiment(api_key="Gncqbz3Rhfy3MZJBcX7xKVJoo", project_name="gener
 experiment.log_parameters(hyper_params)
 
 myfunctions = [AcquisitionFunctions.Random, AcquisitionFunctions.Density_Max,AcquisitionFunctions.Density_Entropy, AcquisitionFunctions.Smallest_Margin, AcquisitionFunctions.SN_Entropy, AcquisitionFunctions.SN_BALD, AcquisitionFunctions.Variation_Ratios, AcquisitionFunctions.Mean_STD]
+
+random_bootstrap_samples = random.sample(range(0, len(train_dataset)), hyper_params["bootstrap_samplesize"])
 
 for j in range(len(myfunctions)):
     print()
@@ -78,4 +81,4 @@ for j in range(len(myfunctions)):
     model = convnet_mnist(10).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr= hyper_params["learning_rate"])
     myselector = Selector(myfunctions[j](selection_size = hyper_params["selection_size"]))
-    acc_random = run_experiment(train_dataset, test_dataset, test_loader,  model, hyper_params["sampling_size"], myselector, optimizer, criterion, myfunctions[j].name, experiment, max_training_num, NUM_TRIALS)
+    acc_random = run_experiment(train_dataset, test_dataset, test_loader,  model, hyper_params["sampling_size"], myselector, optimizer, criterion, myfunctions[j].name, experiment, max_training_num, NUM_TRIALS, hyper_params["NUM_EPOCHS"], hyper_params["learning_rate"], random_bootstrap_samples, hyper_params["reset_model_per_selection"])
