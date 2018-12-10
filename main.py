@@ -39,8 +39,8 @@ def weights_init(m):
 dtsets = []
 prefix = "./fake_data/"
 input_size = 28
-fake_subset_indices = [x for x in range(0)]
-real_subset_indices = [x for x in range(60000)]
+fake_subset_indices = [x for x in range(3000)]
+real_subset_indices = [x for x in range(30000)]
 
 
 
@@ -61,16 +61,17 @@ criterion = nn.CrossEntropyLoss()
 #Contains most of the parameters needed for an experiment
 #CONFIGURABLE STUFF
 NUM_TRIALS = 10
-max_training_num = 220
-hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/10), "selection_size": 10, "max_training_num": max_training_num, "NUM_EPOCHS": 10, "bootstrap_samplesize": 20, "reset_model_per_selection": True}
+max_training_num = 5020
+hyper_params = {"learning_rate": 0.001, "sampling_size": int(len(train_dataset)/6), "selection_size": 250, "max_training_num": max_training_num, "NUM_EPOCHS": 1, "bootstrap_samplesize": 20, "reset_model_per_selection": False}
 
 
 
-experiment = Experiment(api_key="Gncqbz3Rhfy3MZJBcX7xKVJoo", project_name="general", workspace="deepak-sharma-mail-mcgill-ca")
+experiment = Experiment(api_key="Gncqbz3Rhfy3MZJBcX7xKVJoo", project_name="amit", workspace="deepak-sharma-mail-mcgill-ca")
+#experiment = Experiment(api_key="wD61O90Y34KruZHAyHH7bqWRw", project_name="general", workspace="amitfishy")
 experiment.log_parameters(hyper_params)
 
-myfunctions = [AcquisitionFunctions.Random, AcquisitionFunctions.Density_Max,AcquisitionFunctions.Density_Entropy, AcquisitionFunctions.Smallest_Margin, AcquisitionFunctions.SN_Entropy, AcquisitionFunctions.SN_BALD, AcquisitionFunctions.Variation_Ratios, AcquisitionFunctions.Mean_STD]
-
+myfunctions = [AcquisitionFunctions.Random, AcquisitionFunctions.Smallest_Margin, AcquisitionFunctions.Density_Max,AcquisitionFunctions.Density_Entropy, AcquisitionFunctions.SN_Entropy, AcquisitionFunctions.SN_BALD, AcquisitionFunctions.Variation_Ratios, AcquisitionFunctions.Mean_STD]
+#myfunctions = [AcquisitionFunctions.Mean_STD]
 random_bootstrap_samples = random.sample(range(0, len(train_dataset)), hyper_params["bootstrap_samplesize"])
 
 for j in range(len(myfunctions)):

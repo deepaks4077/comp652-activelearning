@@ -10,7 +10,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def test_model(model, test_loader, NUM_TRIALS):
     #model.eval()
-    model.train()
+    model.eval()
     total_test_samples = test_loader.batch_size * len(test_loader)
     with torch.no_grad():
         correct = 0
@@ -18,7 +18,7 @@ def test_model(model, test_loader, NUM_TRIALS):
         
         for idx, (images, labels, tl_ind, _) in enumerate(test_loader):
             images_temp = images
-            for nt in range(NUM_TRIALS-1):
+            for nt in range(0):
                 images = torch.cat((images,images_temp), dim=0)
             
             images = images.to(device)
