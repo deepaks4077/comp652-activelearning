@@ -1,3 +1,9 @@
+"""
+We took the code from DC examples repository and made changes to some of the parameters and add code to store the
+tensors for the fake data
+https://github.com/pytorch/examples/tree/master/dcgan 
+"""
+
 from __future__ import print_function
 import argparse
 import os
