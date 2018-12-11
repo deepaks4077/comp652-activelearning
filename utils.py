@@ -152,7 +152,7 @@ def run_experiment(train_dataset, test_dataset, test_loader, model, sampling_siz
 
         print("isfake_proportion_ = {}".format(num_fakes))
 
-        if len(selected) == max_training_num:
+        if len(selected) >= max_training_num:
             return accuracy
 
         sampling_set = torch.tensor(list((set(sampling_set.tolist()) - set(training_indices.tolist()))), dtype = torch.int)
